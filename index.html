@@ -199,7 +199,7 @@
           <h2>version 10 / release build</h2>
           <br>
 
-          <form action="https://www.google.com/search" method="get" target="_blank" id="search-form">
+          <form action="https://www.qwant.com/" method="get" target="_blank" id="search-form">
             <input type="text" name="q" id="search-input" placeholder="Search the unblocked web" autocomplete="off">
             <div id="suggestions-container"></div>
           </form>
@@ -346,7 +346,7 @@
                 event.preventDefault();
                 const query = searchInput.value;
                 if (query) {
-                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                    const searchUrl = `https://www.qwant.com/?q=${encodeURIComponent(query)}`;
                     window.open(searchUrl, '_blank');
                 }
             });
@@ -363,12 +363,10 @@
                     return;
                 }
 
-                // Using a proxy to bypass CORS issues with Google's API
-                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-                const apiUrl = `https://www.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`;
+                const apiUrl = `https://api.qwant.com/v3/suggest?q=${encodeURIComponent(query)}&locale=en_us`;
 
                 debounceTimer = setTimeout(() => {
-                    fetch(proxyUrl + apiUrl)
+                    fetch(apiUrl)
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error('Network response was not ok');
@@ -376,21 +374,24 @@
                             return response.json();
                         })
                         .then(data => {
-                            const suggestions = data[1];
-                            if (suggestions && suggestions.length > 0) {
-                                suggestions.forEach(suggestionText => {
-                                    const suggestionItem = document.createElement('div');
-                                    suggestionItem.classList.add('suggestion-item');
-                                    suggestionItem.textContent = suggestionText;
-                                    suggestionItem.addEventListener('click', () => {
-                                        searchInput.value = suggestionText;
-                                        suggestionsContainer.innerHTML = '';
-                                        suggestionsContainer.style.display = 'none';
-                                        searchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                            if (data.status === 'success' && data.data && data.data.items) {
+                                const suggestions = data.data.items;
+                                if (suggestions.length > 0) {
+                                    suggestions.forEach(item => {
+                                        const suggestionText = item.value;
+                                        const suggestionItem = document.createElement('div');
+                                        suggestionItem.classList.add('suggestion-item');
+                                        suggestionItem.textContent = suggestionText;
+                                        suggestionItem.addEventListener('click', () => {
+                                            searchInput.value = suggestionText;
+                                            suggestionsContainer.innerHTML = '';
+                                            suggestionsContainer.style.display = 'none';
+                                            searchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                                        });
+                                        suggestionsContainer.appendChild(suggestionItem);
                                     });
-                                    suggestionsContainer.appendChild(suggestionItem);
-                                });
-                                suggestionsContainer.style.display = 'block';
+                                    suggestionsContainer.style.display = 'block';
+                                }
                             }
                         })
                         .catch(error => {
